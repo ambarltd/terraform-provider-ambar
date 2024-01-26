@@ -1,0 +1,244 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
+package provider
+
+import (
+	"context"
+	"fmt"
+	Ambar "github.com/ambarltd/ambar_go_client"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+	"time"
+)
+
+// Ensure provider defined types fully satisfy framework interfaces.
+var _ resource.Resource = &FilterResource{}
+var _ resource.ResourceWithImportState = &FilterResource{}
+
+func NewFilterResource() resource.Resource {
+	return &FilterResource{}
+}
+
+// FilterResource defines the resource implementation.
+type FilterResource struct {
+	client *Ambar.APIClient
+}
+
+// FilterResourceModel describes the resource data model.
+type filterResourceModel struct {
+	DataSourceId   types.String `tfsdk:"data_source_id"`
+	Description    types.String `tfsdk:"description"`
+	FilterContents types.String `tfsdk:"filter_contents"`
+	State          types.String `tfsdk:"state"`
+	ResourceId     types.String `tfsdk:"resource_id"`
+}
+
+func (r *FilterResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_filter"
+}
+
+func (r *FilterResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		// This description is used by the documentation generator and the language server.
+		MarkdownDescription: "Ambar Filter resource. Represents details about an Ambar DataSource to be read from, and filtering to be done on its record sequences before delivery.",
+		Description:         "Ambar Filter resource. Represents details about an Ambar DataSource to be read from, and filtering to be done on its record sequences before delivery.",
+
+		Attributes: map[string]schema.Attribute{
+			"data_source_id": schema.StringAttribute{
+				MarkdownDescription: "An Ambar resource id belonging to an Ambar DataSource for which this Filter should be applied to.",
+				Description:         "An Ambar resource id belonging to an Ambar DataSource for which this Filter should be applied to.",
+				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"description": schema.StringAttribute{
+				MarkdownDescription: "A user friendly description of this Filter. Use the description field to help augment information about this Filter which may not be apparent from describing the resource, such as what it is filtering.",
+				Description:         "A user friendly description of this Filter. Use the description field to help augment information about this Filter which may not be apparent from describing the resource, such as what it is filtering.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"filter_contents": schema.StringAttribute{
+				MarkdownDescription: "A Base64 Encoded string of the Filter using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
+				Description:         "A Base64 Encoded string of the Filter using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
+				Required:            true,
+				Sensitive:           true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+			"state": schema.StringAttribute{
+				MarkdownDescription: "The current state of the Ambar resource.",
+				Description:         "The current state of the Ambar resource.",
+				Computed:            true,
+			},
+			"resource_id": schema.StringAttribute{
+				MarkdownDescription: "The unique Ambar resource id for this resource.",
+				Description:         "The unique Ambar resource id for this resource.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			},
+		},
+	}
+}
+
+func (r *FilterResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Prevent panic if the provider has not been configured.
+	if req.ProviderData == nil {
+		return
+	}
+
+	client, ok := req.ProviderData.(*Ambar.APIClient)
+
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Resource Configure Type",
+			fmt.Sprintf("Expected *Ambar.APIClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
+}
+
+func (r *FilterResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Retrieve values from plan
+	var plan filterResourceModel
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Generate API request body from plan
+	var createFilter Ambar.CreateFilterRequest
+	createFilter.Description = plan.Description.ValueStringPointer()
+	createFilter.FilterContents = plan.FilterContents.ValueString()
+	createFilter.DataSourceId = plan.DataSourceId.ValueString()
+
+	// Create the API call and execute it
+	createResourceResponse, httpResponse, err := r.client.AmbarAPI.CreateFilter(ctx).CreateFilterRequest(createFilter).Execute()
+	if err != nil || createResourceResponse == nil || httpResponse == nil {
+		resp.Diagnostics.AddError(
+			"Error creating Filter",
+			"Could not create Filter, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	time.Sleep(5 * time.Second)
+
+	var describeFilter Ambar.DescribeResourceRequest
+	describeFilter.ResourceId = createResourceResponse.ResourceId
+
+	describeResourceResponse, _, err := r.client.AmbarAPI.DescribeFilter(ctx).DescribeResourceRequest(describeFilter).Execute()
+	if err != nil {
+		resp.Diagnostics.AddWarning("Help", "me")
+		resp.Diagnostics.AddWarning("Help", err.Error())
+		return
+	}
+
+	// Map response body to schema and populate Computed attribute values
+	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
+	plan.State = types.StringValue(describeResourceResponse.State)
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
+func (r *FilterResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data filterResourceModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get the latest state from the Ambar describe API
+	var describeFilter Ambar.DescribeResourceRequest
+	describeFilter.ResourceId = data.ResourceId.ValueString()
+
+	describeResourceResponse, _, err := r.client.AmbarAPI.DescribeFilter(ctx).DescribeResourceRequest(describeFilter).Execute()
+	// Todo: Handle ResourceNotFoundException gracefully per https://developer.hashicorp.com/terraform/plugin/framework/resources/read#recommendations
+	if err != nil {
+		return
+	}
+
+	data.State = types.StringValue(describeResourceResponse.State)
+	data.Description = types.StringPointerValue(describeResourceResponse.Description)
+	data.DataSourceId = types.StringValue(describeResourceResponse.DataSourceId)
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *FilterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Ambar does not support resource updates, so there is nothing to do in this method. Instead, all attributes
+	// should include the PlanModifier indicating replacement is required on changes. RequiresReplace()
+
+	var data filterResourceModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+func (r *FilterResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data filterResourceModel
+
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Delete the Filter
+	var deleteFilter Ambar.DeleteResourceRequest
+	deleteFilter.ResourceId = data.ResourceId.ValueString()
+
+	_, _, err := r.client.AmbarAPI.DeleteFilter(ctx).DeleteResourceRequest(deleteFilter).Execute()
+	// Todo: Error handling as this call should not throw
+	if err != nil {
+		return
+	}
+
+	// Wait for confirmation the resource is Deleted via a ResourceNotFound error when describing it.
+	var describeFilter Ambar.DescribeResourceRequest
+	describeFilter.ResourceId = data.ResourceId.ValueString()
+
+	for {
+		time.Sleep(10 * time.Second)
+
+		_, _, err := r.client.AmbarAPI.DescribeFilter(ctx).DescribeResourceRequest(describeFilter).Execute()
+		if err != nil {
+			return
+		}
+	}
+}
+
+func (r *FilterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("resource_id"), req, resp)
+}
