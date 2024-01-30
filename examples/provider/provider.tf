@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     ambar = {
-      source = "ambar.cloud/terraform/ambar"
+      source = "ambarltd/ambar"
     }
   }
 }

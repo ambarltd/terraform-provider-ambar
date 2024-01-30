@@ -41,8 +41,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		Address: "registry.terraform.io/hashicorp/ambar",
-		// Stealing this value from the tutorial for a moment. Todo: replace this with the above.
-		Debug: debug,
+		Debug:   debug,
 	}
 
 	err := providerserver.Serve(context.Background(), provider.New(version), opts)
