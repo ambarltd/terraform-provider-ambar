@@ -13,6 +13,8 @@ resource "ambar_data_source" "example_data_source" {
     "databaseName" : "postgres",
     "tableName" : "events",
     "publicationName" : "example_pub",
-    "columns" : "some,other,column"
+    # columns should include all columns to be read from the database
+    # including the partition and serial columns
+    "columns" : "partition,serial,some,other,column"
   }
 }
