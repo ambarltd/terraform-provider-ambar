@@ -317,7 +317,6 @@ func (r *DataDestinationResource) Delete(ctx context.Context, req resource.Delet
 
 		_, _, err := r.client.AmbarAPI.DescribeDataDestination(ctx).DescribeResourceRequest(describeDataDestination).Execute()
 		if err != nil {
-			err.Error()
 			return
 		}
 	}

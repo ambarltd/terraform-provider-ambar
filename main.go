@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	// Provider framework backend server, allows us to connect to hasicorp and do local testing
+	// Provider framework backend server, allows us to connect to hasicorp and do local testing.
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 
 	"terraform-provider-ambar/internal/provider"

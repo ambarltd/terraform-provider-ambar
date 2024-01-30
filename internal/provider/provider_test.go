@@ -15,8 +15,8 @@ const (
 	// such as updating the Makefile and running the testing through that tool.
 	providerConfig = `
 		provider "ambar" {
-			endpoint = "region.api.ambar.cloud"
-			api_key = "your-key"
+			# endpoint = "region.api.ambar.cloud"
+			# api_key = "your-key"
 		}
 `
 )
