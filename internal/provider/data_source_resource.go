@@ -180,6 +180,14 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Map response body to schema and populate Computed attribute values
+	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
+	plan.State = types.StringValue(createResourceResponse.ResourceState)
+
+	// Set state to fully populated data
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+
 	var describeDataSource Ambar.DescribeResourceRequest
 	describeDataSource.ResourceId = createResourceResponse.ResourceId
 
@@ -199,15 +207,11 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
 	plan.State = types.StringValue(describeResourceResponse.State)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 }
 
 func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -273,6 +277,10 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 		)
 		return
 	}
+
+	// partial state save in case of interrupt
+	data.State = types.StringValue(updateResourceResponse.ResourceState)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
 	// Wait for the update to complete
 	var describeDataSource Ambar.DescribeResourceRequest

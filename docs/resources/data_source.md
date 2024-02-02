@@ -20,13 +20,17 @@ resource "ambar_data_source" "example_data_source" {
   serial_column       = "serial"
   username            = "username"
   password            = "password"
+  # data_source_config key-values depend on the type of DataSource being created.
+  # See Ambar docs for more details.
   data_source_config = {
     "hostname" : "host",
     "hostPort" : "5432",
     "databaseName" : "postgres",
     "tableName" : "events",
     "publicationName" : "example_pub",
-    "additionalColumns" : "some,other,column"
+    # columns should include all columns to be read from the database
+    # including the partition and serial columns
+    "columns" : "partition,serial,some,other,column"
   }
 }
 ```
@@ -58,5 +62,7 @@ Import is supported using the following syntax:
 
 ```shell
 # Ambar DataSources can be imported by specifying the resource identifier.
+# Note: Some sensitive fields like usernames and passwords will not get imported into Terraform state
+# from existing resources and may require further action to manage via Terraform templates.
 terraform import ambar_data_source.example_data_source AMBAR-1234567890
 ```

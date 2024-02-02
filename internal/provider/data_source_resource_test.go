@@ -9,18 +9,18 @@ const (
 	exampleDataSourceConfig = `
 resource "ambar_data_source" "test_data_source" {
 	data_source_type = "postgres"
-	description = "My Terraform DataSource"
-	partitioning_column = "partition"
-	serial_column = "serial"
-	username = "postgres"
-	password = "password"
+	description = "My Terraform Acceptance Test DataSource"
+	# partitioning_column = "partition"
+	# serial_column = "serial"
+	# username = "postgres"
+	# password = "password"
 	data_source_config = {
-		"hostname": "host",
+		# "hostname": "host",
 		"hostPort": "5432",
 		"databaseName": "postgres",
 		"tableName": "events",
-		"publicationName": "example_pub",
-		"additionalColumns": "seqid,seqnum,value"
+		"publicationName": "acceptance_test_pub",
+		# "additionalColumns": "seqid,seqnum,value"
 	}
 }`
 )

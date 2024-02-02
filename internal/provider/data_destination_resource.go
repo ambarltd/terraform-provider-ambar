@@ -168,6 +168,12 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
+	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
+	plan.State = types.StringValue(createResourceResponse.ResourceState)
+
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+
 	var describeDataDestination Ambar.DescribeResourceRequest
 	describeDataDestination.ResourceId = createResourceResponse.ResourceId
 
@@ -193,9 +199,6 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 }
 
 func (r *DataDestinationResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -256,6 +259,10 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 		)
 		return
 	}
+
+	// partial state save in case of interrupt
+	data.State = types.StringValue(updateResourceResponse.ResourceState)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
 	// Wait for the update to complete
 	var describeResourceResponse *Ambar.DataDestination
