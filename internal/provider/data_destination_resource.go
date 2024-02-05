@@ -35,7 +35,6 @@ type dataDestinationResourceModel struct {
 	FilterIds           types.List   `tfsdk:"filter_ids"`
 	Description         types.String `tfsdk:"description"`
 	DestinationEndpoint types.String `tfsdk:"destination_endpoint"`
-	DestinationName     types.String `tfsdk:"destination_name"`
 	Username            types.String `tfsdk:"username"`
 	Password            types.String `tfsdk:"password"`
 	State               types.String `tfsdk:"state"`
@@ -73,14 +72,6 @@ func (r *DataDestinationResource) Schema(ctx context.Context, req resource.Schem
 			"destination_endpoint": schema.StringAttribute{
 				MarkdownDescription: "The HTTP endpoint where Ambar will send your filtered record sequences to.",
 				Description:         "The HTTP endpoint where Ambar will send your filtered record sequences to.",
-				Optional:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"destination_name": schema.StringAttribute{
-				MarkdownDescription: "An optional name which Ambar will use when pushing record sequences to your Destination. Used to identify which Destination is ",
-				Description:         "An optional name which Ambar will use when pushing record sequences to your Destination. Used to identify which Destination is ",
 				Optional:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -155,7 +146,6 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 	createDataDestination.Description = plan.Description.ValueStringPointer()
 	createDataDestination.Username = plan.Username.ValueString()
 	createDataDestination.Password = plan.Password.ValueString()
-	createDataDestination.DestinationName = plan.DestinationName.ValueStringPointer()
 	createDataDestination.DestinationEndpoint = plan.DestinationEndpoint.ValueString()
 
 	// Create the API call and execute it
@@ -169,7 +159,7 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
-	plan.State = types.StringValue(createResourceResponse.ResourceState)
+	plan.State = types.StringValue(createResourceResponse.State)
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -224,7 +214,6 @@ func (r *DataDestinationResource) Read(ctx context.Context, req resource.ReadReq
 	data.State = types.StringValue(describeResourceResponse.State)
 	data.DestinationEndpoint = types.StringValue(describeResourceResponse.DestinationEndpoint)
 	data.Description = types.StringPointerValue(describeResourceResponse.Description)
-	data.DestinationName = types.StringValue(describeResourceResponse.DestinationName)
 
 	data.FilterIds, _ = types.ListValueFrom(ctx, types.StringType, describeResourceResponse.FilterIds)
 
@@ -261,7 +250,7 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	// partial state save in case of interrupt
-	data.State = types.StringValue(updateResourceResponse.ResourceState)
+	data.State = types.StringValue(updateResourceResponse.State)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 
 	// Wait for the update to complete
