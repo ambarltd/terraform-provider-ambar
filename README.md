@@ -11,7 +11,7 @@
 
 The [Ambar Provider](https://registry.terraform.io/providers/ambarltd/ambar/latest/docs) allows [Terraform](https://terraform.io) to manage [Ambar](https://ambar.cloud) resources.
 
-- [Contributing guide] *coming soon*
+- [Contributing guide / Roadmap] *coming soon*
 - [FAQ] *coming soon*
 - [Tutorials and Examples] *coming soon*
 - [Help and Support] *coming soon*

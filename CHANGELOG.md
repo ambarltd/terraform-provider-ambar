@@ -1,5 +1,11 @@
-## 1.0.0 (Initial Release)
+## 1.0.1
+FEATURES:
+* Removed DataDestination DestinationName field
+* Removed DataSource top level fields, they should instead be passed as part of the DataSourceConfig map
+* Updated provider to use the latest Ambar SDK
+* Minor improvements to debug logging
 
+## 1.0.0 (Initial Release)
 FEATURES:
  * Ambar initial Terraform support.
    * Support for Ambar DataSource resources like the Postgres DataSourceType

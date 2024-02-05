@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strings"
 	"time"
 )
@@ -33,15 +34,11 @@ type dataSourceResource struct {
 
 // dataSourceResourceModel describes the resource data model.
 type dataSourceResourceModel struct {
-	DataSourceType     types.String `tfsdk:"data_source_type"`
-	Description        types.String `tfsdk:"description"`
-	Username           types.String `tfsdk:"username"`
-	Password           types.String `tfsdk:"password"`
-	SerialColumn       types.String `tfsdk:"serial_column"`
-	PartitioningColumn types.String `tfsdk:"partitioning_column"`
-	DataSourceConfig   types.Map    `tfsdk:"data_source_config"`
-	State              types.String `tfsdk:"state"`
-	ResourceId         types.String `tfsdk:"resource_id"`
+	DataSourceType   types.String `tfsdk:"data_source_type"`
+	Description      types.String `tfsdk:"description"`
+	DataSourceConfig types.Map    `tfsdk:"data_source_config"`
+	State            types.String `tfsdk:"state"`
+	ResourceId       types.String `tfsdk:"resource_id"`
 }
 
 func (r *dataSourceResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -67,34 +64,6 @@ func (r *dataSourceResource) Schema(ctx context.Context, req resource.SchemaRequ
 				MarkdownDescription: "A user friendly description of this DataSource. Use the description field to help augment information about this DataSource which may not be apparent from describing the resource, such as if it is a test environment resource or which department owns it.",
 				Description:         "A user friendly description of this DataSource. Use the description field to help augment information about this DataSource which may not be apparent from describing the resource, such as if it is a test environment resource or which department owns it.",
 				Optional:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"username": schema.StringAttribute{
-				MarkdownDescription: "A username credential which Ambar can use to communicate with your database storage.",
-				Description:         "A username credential which Ambar can use to communicate with your database storage.",
-				Required:            true,
-				Sensitive:           true,
-			},
-			"password": schema.StringAttribute{
-				MarkdownDescription: "A password credential which Ambar can use to communicate with your database storage.",
-				Description:         "A password credential which Ambar can use to communicate with your database storage.",
-				Required:            true,
-				Sensitive:           true,
-			},
-			"serial_column": schema.StringAttribute{
-				MarkdownDescription: "The name of a column which increments with each write to the database.",
-				Description:         "The name of a column which increments with each write to the database.",
-				Required:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"partitioning_column": schema.StringAttribute{
-				MarkdownDescription: "The name of the column which records in the database are partitioned on.",
-				Description:         "The name of the column which records in the database are partitioned on.",
-				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -158,10 +127,6 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 	var createDataSource Ambar.CreateDataSourceRequest
 	createDataSource.DataSourceType = plan.DataSourceType.ValueString()
 	createDataSource.Description = plan.Description.ValueStringPointer()
-	createDataSource.PartitioningColumn = plan.PartitioningColumn.ValueString()
-	createDataSource.SerialColumn = plan.SerialColumn.ValueString()
-	createDataSource.Username = plan.Username.ValueString()
-	createDataSource.Password = plan.Password.ValueString()
 
 	// Handle dynamic DataSource resource configuration map
 	createDataSource.DataSourceConfig = make(map[string]string)
@@ -182,7 +147,7 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
-	plan.State = types.StringValue(createResourceResponse.ResourceState)
+	plan.State = types.StringValue(createResourceResponse.State)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -197,7 +162,9 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 		time.Sleep(10 * time.Second)
 
 		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
 		if err != nil {
+			tflog.Error(ctx, "Got error!"+err.Error())
 			return
 		}
 
@@ -229,8 +196,10 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 	describeDataSource.ResourceId = data.ResourceId.ValueString()
 
 	describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+	tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
 	// Todo: Handle ResourceNotFoundException gracefully per https://developer.hashicorp.com/terraform/plugin/framework/resources/read#recommendations
 	if err != nil {
+		tflog.Error(ctx, "Got error!"+err.Error())
 		return
 	}
 
@@ -241,8 +210,6 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 	data.State = types.StringValue(describeResourceResponse.State)
 	data.DataSourceType = types.StringValue(describeResourceResponse.DataSourceType)
 	data.Description = types.StringPointerValue(describeResourceResponse.Description)
-	data.SerialColumn = types.StringValue(describeResourceResponse.SerialColumn)
-	data.PartitioningColumn = types.StringValue(describeResourceResponse.PartitioningColumn)
 
 	data.DataSourceConfig, _ = types.MapValueFrom(ctx, types.StringType, describeResourceResponse.DataSourceConfig)
 
@@ -251,10 +218,8 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 }
 
 func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Ambar does not support resource updates, only credential rotations. Instead, all attributes
-	// should include the PlanModifier indicating replacement is required on changes. RequiresReplace()
+	// Ambar does not support resource updates on DataSources for now.
 	var data dataSourceResourceModel
-	var err error
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -262,49 +227,6 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	// Make the call to update the credentials
-	var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
-	updateCredentialsRequest.ResourceId = data.ResourceId.ValueString()
-	updateCredentialsRequest.Username = data.Username.ValueString()
-	updateCredentialsRequest.Password = data.Password.ValueString()
-
-	updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataSourceCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
-	if err != nil || updateResourceResponse == nil || httpResponse == nil {
-		resp.Diagnostics.AddError(
-			"Error updating DataSource",
-			"Could not update DataSource, unexpected error: "+err.Error(),
-		)
-		return
-	}
-
-	// partial state save in case of interrupt
-	data.State = types.StringValue(updateResourceResponse.ResourceState)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
-
-	// Wait for the update to complete
-	var describeDataSource Ambar.DescribeResourceRequest
-	describeDataSource.ResourceId = data.ResourceId.ValueString()
-
-	var describeResourceResponse *Ambar.DataSource
-
-	for {
-		time.Sleep(10 * time.Second)
-
-		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
-		if err != nil {
-			return
-		}
-
-		if describeResourceResponse.State == "READY" {
-			break
-		}
-	}
-
-	data.State = types.StringValue(describeResourceResponse.State)
-
-	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -321,9 +243,10 @@ func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 	var deleteDataSource Ambar.DeleteResourceRequest
 	deleteDataSource.ResourceId = data.ResourceId.ValueString()
 
-	_, _, err := r.client.AmbarAPI.DeleteDataSource(ctx).DeleteResourceRequest(deleteDataSource).Execute()
-	// Todo: Error handling as this call should not throw
+	deleteResponse, _, err := r.client.AmbarAPI.DeleteDataSource(ctx).DeleteResourceRequest(deleteDataSource).Execute()
+	tflog.Debug(ctx, "Got state: "+deleteResponse.State)
 	if err != nil {
+		tflog.Error(ctx, "Got error!"+err.Error())
 		return
 	}
 
@@ -334,8 +257,10 @@ func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 	for {
 		time.Sleep(10 * time.Second)
 
-		_, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+		describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
 		if err != nil {
+			tflog.Error(ctx, "Got error!"+err.Error())
 			return
 		}
 	}

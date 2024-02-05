@@ -14,23 +14,49 @@ Ambar DataSource resource. Represents the details needed for Ambar to establish 
 
 ```terraform
 resource "ambar_data_source" "example_data_source" {
-  data_source_type    = "postgres"
-  description         = "My Terraform DataSource"
-  partitioning_column = "partition"
-  serial_column       = "serial"
-  username            = "username"
-  password            = "password"
+  data_source_type = "postgres"
+  description      = "My Terraform Postgres DataSource"
   # data_source_config key-values depend on the type of DataSource being created.
   # See Ambar docs for more details.
   data_source_config = {
     "hostname" : "host",
     "hostPort" : "5432",
+    "username" : "username",
+    "password" : "password"
     "databaseName" : "postgres",
     "tableName" : "events",
     "publicationName" : "example_pub",
+    "partitioningColumn" : "partition",
+    "serialColumn" : "serial",
     # columns should include all columns to be read from the database
     # including the partition and serial columns
-    "columns" : "partition,serial,some,other,column"
+    "columns" : "partition,serial,some,other,column",
+    # tls termination override is optional
+    "tlsTerminationOverrideHost" : "tls.termination.host"
+  }
+}
+
+resource "ambar_data_source" "example_mysql_data_source" {
+  data_source_type = "mysql"
+  description      = "My Terraform MySQL DataSource"
+  # data_source_config key-values depend on the type of DataSource being created.
+  # See Ambar docs for more details.
+  data_source_config = {
+    "hostname" : "host",
+    "hostPort" : "5432",
+    "username" : "username",
+    "password" : "password"
+    "databaseName" : "postgres",
+    "tableName" : "events",
+    "publicationName" : "example_pub",
+    "partitioningColumn" : "partition",
+    "incrementingColumn" : "incrementing",
+    # columns should include all columns to be read from the database
+    # including the partition and incrementing columns
+    "columns" : "partition,incrementing,some,other,column",
+    "binLogReplicationServerId" : 1001,
+    # tls termination override is optional
+    "tlsTerminationOverrideHost" : "tls.termination.host"
   }
 }
 ```
@@ -42,10 +68,6 @@ resource "ambar_data_source" "example_data_source" {
 
 - `data_source_config` (Map of String) A Key Value map of further DataSource configurations specific to the type of database this DataSource will connect to. See Ambar documentation for a list of required parameters.
 - `data_source_type` (String) The type of durable storage being connected to. This should be one of the supported database types by Ambar such as postgres. See Ambar documentation for a full list of supported data_source_types.
-- `partitioning_column` (String) The name of the column which records in the database are partitioned on.
-- `password` (String, Sensitive) A password credential which Ambar can use to communicate with your database storage.
-- `serial_column` (String) The name of a column which increments with each write to the database.
-- `username` (String, Sensitive) A username credential which Ambar can use to communicate with your database storage.
 
 ### Optional
 
