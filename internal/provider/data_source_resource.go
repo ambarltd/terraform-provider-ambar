@@ -15,6 +15,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -195,11 +197,28 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 	var describeDataSource Ambar.DescribeResourceRequest
 	describeDataSource.ResourceId = data.ResourceId.ValueString()
 
-	describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
-	tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
-	// Todo: Handle ResourceNotFoundException gracefully per https://developer.hashicorp.com/terraform/plugin/framework/resources/read#recommendations
+	describeResourceResponse, httpResponse, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+
 	if err != nil {
-		tflog.Error(ctx, "Got error!"+err.Error())
+		tflog.Error(ctx, "Got error: "+err.Error())
+
+		if httpResponse.StatusCode == http.StatusNotFound {
+			tflog.Info(ctx, "Resource was not found. Removing from state.")
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
+		tflog.Error(ctx, "Unexpected error, dumping logs and returning.")
+		tflog.Error(ctx, "Got http response, code: "+strconv.Itoa(httpResponse.StatusCode)+", status: "+httpResponse.Status)
+		resp.Diagnostics.AddError("Unable to read DataSource resource.", err.Error())
+		return
+	}
+
+	tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
+	// If the resource is in the deleting state, then we should consider it deleted.
+	if describeResourceResponse.State == "DELETING" {
+		tflog.Info(ctx, "Resource was found in DELETING state and will not exist eventually. Removing from state.")
+		resp.State.RemoveResource(ctx)
 		return
 	}
 
@@ -243,27 +262,48 @@ func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 	var deleteDataSource Ambar.DeleteResourceRequest
 	deleteDataSource.ResourceId = data.ResourceId.ValueString()
 
-	deleteResponse, _, err := r.client.AmbarAPI.DeleteDataSource(ctx).DeleteResourceRequest(deleteDataSource).Execute()
-	tflog.Debug(ctx, "Got state: "+deleteResponse.State)
+	deleteResponse, httpResponse, err := r.client.AmbarAPI.DeleteDataSource(ctx).DeleteResourceRequest(deleteDataSource).Execute()
 	if err != nil {
-		tflog.Error(ctx, "Got error!"+err.Error())
+		tflog.Error(ctx, "Got error: "+err.Error())
+
+		if httpResponse.StatusCode == http.StatusNotFound {
+			tflog.Info(ctx, "Resource was not found. Removing from state.")
+			resp.State.RemoveResource(ctx)
+			return
+		}
+
+		tflog.Error(ctx, "Unexpected error, dumping logs and returning.")
+		tflog.Error(ctx, "Got http response, code: "+strconv.Itoa(httpResponse.StatusCode)+", status: "+httpResponse.Status)
+		resp.Diagnostics.AddError("Unable to delete DataSource resource.", err.Error())
 		return
 	}
+	tflog.Info(ctx, "Got deleteResponse: "+deleteResponse.State)
 
-	// Wait for confirmation the resource is Deleted via a ResourceNotFound error when describing it.
 	var describeDataSource Ambar.DescribeResourceRequest
 	describeDataSource.ResourceId = data.ResourceId.ValueString()
 
 	for {
 		time.Sleep(10 * time.Second)
 
-		describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
-		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
+		describeResourceResponse, httpResponse, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+
 		if err != nil {
-			tflog.Error(ctx, "Got error!"+err.Error())
+			tflog.Error(ctx, "Got error: "+err.Error())
+
+			if httpResponse.StatusCode == http.StatusNotFound {
+				tflog.Info(ctx, "Resource was not found. This is expected for delete, returning.")
+				return
+			}
+
+			tflog.Error(ctx, "Unexpected error, dumping logs and returning.")
+			tflog.Error(ctx, "Got http response, code: "+strconv.Itoa(httpResponse.StatusCode)+", status: "+httpResponse.Status)
+			resp.Diagnostics.AddError("Unable to read DataSource resource to confirm deletion. Got error.", err.Error())
 			return
 		}
+
+		tflog.Debug(ctx, "Waiting for resource to complete deletion. Current state: "+describeResourceResponse.State)
 	}
+
 }
 
 func (r *dataSourceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
