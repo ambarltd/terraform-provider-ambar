@@ -84,6 +84,11 @@ func (r *dataSourceResource) Schema(ctx context.Context, req resource.SchemaRequ
 				MarkdownDescription: "The current state of the Ambar resource.",
 				Description:         "The current state of the Ambar resource.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplaceIf(doesStateRequireReplace,
+						"If the state of the resource is not valid for further use, such as FAILED",
+						"If the state of the resource is not valid for further use, such as FAILED"),
+				},
 			},
 			"resource_id": schema.StringAttribute{
 				MarkdownDescription: "The unique Ambar resource id for this resource.",
@@ -95,6 +100,22 @@ func (r *dataSourceResource) Schema(ctx context.Context, req resource.SchemaRequ
 			},
 		},
 	}
+}
+
+func doesStateRequireReplace(ctx context.Context, request planmodifier.StringRequest, response *stringplanmodifier.RequiresReplaceIfFuncResponse) {
+	var data dataSourceResourceModel
+
+	// Read Terraform prior state data into the model
+	request.State.Get(ctx, &data)
+
+	tflog.Debug(ctx, "Got value for state: "+data.State.String())
+
+	if data.State.String() == "FAILED" {
+		response.RequiresReplace = true
+		return
+	}
+
+	return
 }
 
 func (r *dataSourceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -153,7 +174,7 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 	plan.State = types.StringValue(createResourceResponse.State)
 
 	// Set state to fully populated data
-	diags = resp.State.Set(ctx, plan)
+	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 
 	var describeDataSource Ambar.DescribeResourceRequest
@@ -165,14 +186,23 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 		time.Sleep(10 * time.Second)
 
 		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
-		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
 		if err != nil {
 			tflog.Error(ctx, "Got error!"+err.Error())
 			return
 		}
 
+		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
 		if describeResourceResponse.State == "READY" {
 			break
+		}
+
+		if describeResourceResponse.State == "FAILED" {
+			tflog.Info(ctx, "Error creating the DataSource, failing creation.")
+			resp.Diagnostics.AddError(
+				"Error creating DataSource",
+				"Could not create DataSource, resource in FAILED state indicating errors while creating with passed values.",
+			)
+			return
 		}
 	}
 
@@ -180,7 +210,7 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 	plan.State = types.StringValue(describeResourceResponse.State)
 
 	// Set state to fully populated data
-	diags = resp.State.Set(ctx, plan)
+	diags = resp.State.Set(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 }
 
