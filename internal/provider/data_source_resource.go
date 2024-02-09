@@ -114,8 +114,6 @@ func doesStateRequireReplace(ctx context.Context, request planmodifier.StringReq
 		response.RequiresReplace = true
 		return
 	}
-
-	return
 }
 
 func (r *dataSourceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
