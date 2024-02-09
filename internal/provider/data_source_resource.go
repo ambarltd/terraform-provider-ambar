@@ -24,6 +24,7 @@ import (
 // Ensure provider defined types fully satisfy framework interfaces.
 var _ resource.Resource = &dataSourceResource{}
 var _ resource.ResourceWithImportState = &dataSourceResource{}
+var _ resource.ResourceWithConfigure = &dataSourceResource{}
 
 func NewDataSourceResource() resource.Resource {
 	return &dataSourceResource{}
@@ -230,6 +231,18 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 	data.DataSourceType = types.StringValue(describeResourceResponse.DataSourceType)
 	data.Description = types.StringPointerValue(describeResourceResponse.Description)
 
+	// Describe calls will not return sensitive credentials. So we will need to carry the local value forward to prevent
+	// always doing a replacement on each apply.
+	username := data.DataSourceConfig.Elements()["username"].String()
+	password := data.DataSourceConfig.Elements()["password"].String()
+
+	tflog.Info(ctx, "Got value for username from state: "+username)
+
+	// Add back credentials to prevent recreation issues.
+	describeResourceResponse.DataSourceConfig["username"] = strings.Trim(username, "\"")
+	describeResourceResponse.DataSourceConfig["password"] = strings.Trim(password, "\"")
+
+	// remap the config from the describe call. This will be missing credentials
 	data.DataSourceConfig, _ = types.MapValueFrom(ctx, types.StringType, describeResourceResponse.DataSourceConfig)
 
 	// Save updated data into Terraform state
