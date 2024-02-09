@@ -5,7 +5,7 @@ resource "ambar_data_source" "example_data_source" {
   # See Ambar docs for more details.
   data_source_config = {
     "hostname" : "host",
-    "hostPort" : "5432",
+    "hostPort" : 5432,
     "username" : "username",
     "password" : "password"
     "databaseName" : "postgres",
@@ -28,7 +28,7 @@ resource "ambar_data_source" "example_mysql_data_source" {
   # See Ambar docs for more details.
   data_source_config = {
     "hostname" : "host",
-    "hostPort" : "3036",
+    "hostPort" : 3036,
     "username" : "username",
     "password" : "password"
     "databaseName" : "mysql",
