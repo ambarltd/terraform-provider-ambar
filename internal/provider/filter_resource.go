@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -146,9 +147,13 @@ func (r *FilterResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Create the API call and execute it
 	createResourceResponse, httpResponse, err := r.client.AmbarAPI.CreateFilter(ctx).CreateFilterRequest(createFilter).Execute()
 	if err != nil || createResourceResponse == nil || httpResponse == nil {
+		tflog.Debug(ctx, "StatusCode: "+httpResponse.Status)
+		httpBody, _ := io.ReadAll(httpResponse.Body)
+		errString := string(httpBody)
+		tflog.Debug(ctx, errString)
 		resp.Diagnostics.AddError(
 			"Error creating Filter",
-			"Could not create Filter, unexpected error: "+err.Error(),
+			"Could not create Filter: "+AmbarApiErrorToTerraformErrorString(errString),
 		)
 		return
 	}

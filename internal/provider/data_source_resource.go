@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -160,9 +161,13 @@ func (r *dataSourceResource) Create(ctx context.Context, req resource.CreateRequ
 	// Create the API call and execute it
 	createResourceResponse, httpResponse, err := r.client.AmbarAPI.CreateDataSource(ctx).CreateDataSourceRequest(createDataSource).Execute()
 	if err != nil || createResourceResponse == nil || httpResponse == nil {
+		tflog.Debug(ctx, "StatusCode: "+httpResponse.Status)
+		httpBody, _ := io.ReadAll(httpResponse.Body)
+		errString := string(httpBody)
+		tflog.Debug(ctx, errString)
 		resp.Diagnostics.AddError(
 			"Error creating DataSource",
-			"Could not create DataSource, unexpected error: "+err.Error(),
+			"Could not create DataSource: "+AmbarApiErrorToTerraformErrorString(errString),
 		)
 		return
 	}
