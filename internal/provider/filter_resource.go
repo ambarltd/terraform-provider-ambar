@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	Ambar "github.com/ambarltd/ambar_go_client"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -69,8 +70,8 @@ func (r *FilterResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"filter_contents": schema.StringAttribute{
-				MarkdownDescription: "A Base64 Encoded string of the Filter using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
-				Description:         "A Base64 Encoded string of the Filter using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
+				MarkdownDescription: "A string filter statement using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
+				Description:         "A string filter statement using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
 				Required:            true,
 				Sensitive:           true,
 				PlanModifiers: []planmodifier.String{
@@ -126,7 +127,20 @@ func (r *FilterResource) Create(ctx context.Context, req resource.CreateRequest,
 	// Generate API request body from plan
 	var createFilter Ambar.CreateFilterRequest
 	createFilter.Description = plan.Description.ValueStringPointer()
-	createFilter.FilterContents = plan.FilterContents.ValueString()
+
+	// Filters we encode the content string in base64 for API requests to compact complex filters and prevent white spaces
+	// from giving any issues. If the customer already encoded the contents, great. But it is not required. So we will
+	// check if they already did it, and otherwise encode it.
+	_, err := base64.StdEncoding.DecodeString(plan.FilterContents.ValueString())
+	if err != nil {
+		// decoding failed, and we will want to encode and assign
+		encodedContents := base64.StdEncoding.EncodeToString([]byte(plan.FilterContents.ValueString()))
+		createFilter.FilterContents = encodedContents
+	} else {
+		// customer already base64 encoded, so just pass it on through.
+		createFilter.FilterContents = plan.FilterContents.ValueString()
+	}
+
 	createFilter.DataSourceId = plan.DataSourceId.ValueString()
 
 	// Create the API call and execute it
