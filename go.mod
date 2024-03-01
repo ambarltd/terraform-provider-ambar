@@ -1,6 +1,8 @@
 module terraform-provider-ambar
 
-go 1.20
+go 1.21
+
+toolchain go1.21.3
 
 require (
 	github.com/ambarltd/ambar_go_client v0.0.0-20240205224211-ad1560f6ac69
