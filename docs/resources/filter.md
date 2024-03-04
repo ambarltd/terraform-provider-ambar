@@ -26,7 +26,7 @@ resource "ambar_filter" "example_filter" {
 ### Required
 
 - `data_source_id` (String) An Ambar resource id belonging to an Ambar DataSource for which this Filter should be applied to.
-- `filter_contents` (String, Sensitive) A string filter statement using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.
+- `filter_contents` (String, Sensitive) A string filter statement using Ambar Filter syntax. See [Ambar documentation](https://docs.ambar.cloud) for more details on valid Ambar filtering operations on record sequences.
 
 ### Optional
 

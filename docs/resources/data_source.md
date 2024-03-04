@@ -48,7 +48,6 @@ resource "ambar_data_source" "example_mysql_data_source" {
     "password" : "password"
     "databaseName" : "mysql",
     "tableName" : "events",
-    "publicationName" : "example_pub",
     "partitioningColumn" : "partition",
     "incrementingColumn" : "incrementing",
     # columns should include all columns to be read from the database

@@ -71,8 +71,8 @@ func (r *FilterResource) Schema(ctx context.Context, req resource.SchemaRequest,
 				},
 			},
 			"filter_contents": schema.StringAttribute{
-				MarkdownDescription: "A string filter statement using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
-				Description:         "A string filter statement using Ambar Filter syntax. See Ambar documentation for more details on valid Ambar filtering operations on record sequences.",
+				MarkdownDescription: "A string filter statement using Ambar Filter syntax. See [Ambar documentation](https://docs.ambar.cloud) for more details on valid Ambar filtering operations on record sequences.",
+				Description:         "A string filter statement using Ambar Filter syntax. See [Ambar documentation](https://docs.ambar.cloud) for more details on valid Ambar filtering operations on record sequences.",
 				Required:            true,
 				Sensitive:           true,
 				PlanModifiers: []planmodifier.String{

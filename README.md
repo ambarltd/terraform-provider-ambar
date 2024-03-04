@@ -13,5 +13,8 @@ The [Ambar Provider](https://registry.terraform.io/providers/ambarltd/ambar/late
 
 - [Contributing guide / Roadmap] *coming soon*
 - [FAQ] *coming soon*
-- [Tutorials and Examples] *coming soon*
-- [Help and Support] *coming soon*
+- [Tutorials and Examples]
+  - See the `/examples` directory for examples.
+- [Help and Support]
+  - Refer to Ambar [Official docs](https://docs.ambar.cloud)
+  - Contact us at `contact@ambar.cloud`
