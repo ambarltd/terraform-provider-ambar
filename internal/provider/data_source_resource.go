@@ -320,12 +320,54 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Ambar does not support resource updates on DataSources for now.
 	var data dataSourceResourceModel
+	var err error
 
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	// Make the call to update the credentials
+	var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
+	updateCredentialsRequest.ResourceId = data.ResourceId.ValueString()
+	updateCredentialsRequest.Username = strings.Trim(data.DataSourceConfig.Elements()["username"].String(), "\"")
+	updateCredentialsRequest.Password = strings.Trim(data.DataSourceConfig.Elements()["password"].String(), "\"")
+
+	updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataSourceCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
+	if err != nil || updateResourceResponse == nil || httpResponse == nil {
+		resp.Diagnostics.AddError(
+			"Error updating DataSource",
+			"Could not update DataSource, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	// partial state save in case of interrupt
+	data.State = types.StringValue(updateResourceResponse.State)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	// Wait for the update to complete
+	var describeDataSource Ambar.DescribeResourceRequest
+	describeDataSource.ResourceId = data.ResourceId.ValueString()
+
+	var describeResourceResponse *Ambar.DataSource
+
+	for {
+		time.Sleep(10 * time.Second)
+
+		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+		if err != nil {
+			tflog.Error(ctx, "Got error!"+err.Error())
+			return
+		}
+
+		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
+		if describeResourceResponse.State == "READY" {
+			break
+		}
+
 	}
 }
 
