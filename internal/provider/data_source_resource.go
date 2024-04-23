@@ -78,7 +78,42 @@ func (r *dataSourceResource) Schema(ctx context.Context, req resource.SchemaRequ
 				Required:            true,
 				ElementType:         types.StringType,
 				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplace(),
+					mapplanmodifier.RequiresReplaceIf(
+						func(ctx context.Context, req planmodifier.MapRequest, resp *mapplanmodifier.RequiresReplaceIfFuncResponse) {
+							var current dataSourceResourceModel
+							// Read Terraform prior state data into the model
+							resp.Diagnostics.Append(req.State.Get(ctx, &current)...)
+
+							if resp.Diagnostics.HasError() {
+								return
+							}
+
+							var plan dataSourceResourceModel
+							// Read Terraform plan data into the model
+							resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+
+							if resp.Diagnostics.HasError() {
+								return
+							}
+
+							// Loop through all the values and compare. If anything other than username / password has changed we will need to
+							// flag to replace the resource.
+							for key, value := range plan.DataSourceConfig.Elements() {
+								// Remove the quotes if any are present.
+								if key != "username" && key != "password" {
+									if value.String() != current.DataSourceConfig.Elements()[key].String() {
+										tflog.Info(ctx, "Detected change in config which requires replace")
+										resp.RequiresReplace = true
+										return
+									}
+								} else {
+									tflog.Info(ctx, "Detected change in config which does not require replace")
+								}
+							}
+						},
+						"Only some config value updates are supported. For a list of supported values, see Ambar docs.",
+						"Only some config value updates are supported. For a list of supported values, see Ambar docs.",
+					),
 				},
 			},
 			"state": schema.StringAttribute{
@@ -349,7 +384,6 @@ func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 		tflog.Debug(ctx, "Waiting for resource to complete deletion. Current state: "+describeResourceResponse.State)
 	}
-
 }
 
 func (r *dataSourceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
