@@ -99,15 +99,21 @@ func (r *dataSourceResource) Schema(ctx context.Context, req resource.SchemaRequ
 							// Loop through all the values and compare. If anything other than username / password has changed we will need to
 							// flag to replace the resource.
 							for key, value := range plan.DataSourceConfig.Elements() {
-								// Remove the quotes if any are present.
-								if key != "username" && key != "password" {
+								switch key {
+								case
+									"username",
+									"password",
+									"hostname",
+									"hostPort",
+									"tlsTerminationOverrideHost":
+									tflog.Info(ctx, "Detected change in config which does not require replace")
+									continue
+								default:
 									if value.String() != current.DataSourceConfig.Elements()[key].String() {
 										tflog.Info(ctx, "Detected change in config which requires replace")
 										resp.RequiresReplace = true
 										return
 									}
-								} else {
-									tflog.Info(ctx, "Detected change in config which does not require replace")
 								}
 							}
 						},
@@ -319,38 +325,84 @@ func (r *dataSourceResource) Read(ctx context.Context, req resource.ReadRequest,
 
 func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Ambar does not support resource updates on DataSources for now.
-	var data dataSourceResourceModel
+	var plan dataSourceResourceModel
+	var current dataSourceResourceModel
 	var err error
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	// Read Terraform plan into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &current)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Make the call to update the credentials
-	var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
-	updateCredentialsRequest.ResourceId = data.ResourceId.ValueString()
-	updateCredentialsRequest.Username = strings.Trim(data.DataSourceConfig.Elements()["username"].String(), "\"")
-	updateCredentialsRequest.Password = strings.Trim(data.DataSourceConfig.Elements()["password"].String(), "\"")
+	// We need to validate we can perform the change in a single operation, so only credentials should be changed, or only
+	// non-credential attributes should be changed
+	var credentialsUpdated = plan.DataSourceConfig.Elements()["username"].String() != current.DataSourceConfig.Elements()["username"].String() ||
+		plan.DataSourceConfig.Elements()["password"].String() != current.DataSourceConfig.Elements()["password"].String()
+	var nonCredentialsUpdated = plan.DataSourceConfig.Elements()["hostname"].String() != current.DataSourceConfig.Elements()["hostname"].String() ||
+		plan.DataSourceConfig.Elements()["hostPort"].String() != current.DataSourceConfig.Elements()["hostPort"].String()
 
-	updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataSourceCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
-	if err != nil || updateResourceResponse == nil || httpResponse == nil {
-		resp.Diagnostics.AddError(
-			"Error updating DataSource",
-			"Could not update DataSource, unexpected error: "+err.Error(),
-		)
+	if _, ok := plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"]; ok {
+		nonCredentialsUpdated = nonCredentialsUpdated ||
+			plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String() != current.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String()
+	}
+
+	if credentialsUpdated && nonCredentialsUpdated {
+		resp.Diagnostics.AddError("Invalid parameter change combination.",
+			"When updating Ambar resources, perform credential changes independent of any other updates on resources.")
 		return
 	}
 
+	var updateResourceResponse Ambar.ResourceStateChangeResponse
+
+	if credentialsUpdated {
+		// Make the call to update the credentials if requested
+		var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
+		updateCredentialsRequest.ResourceId = plan.ResourceId.ValueString()
+		updateCredentialsRequest.Username = strings.Trim(plan.DataSourceConfig.Elements()["username"].String(), "\"")
+		updateCredentialsRequest.Password = strings.Trim(plan.DataSourceConfig.Elements()["password"].String(), "\"")
+
+		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataSourceCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
+		if err != nil || updateResourceResponse == nil || httpResponse == nil {
+			resp.Diagnostics.AddError(
+				"Error updating DataSource",
+				"Could not update DataSource, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	} else {
+		// Make the call to update the DataSource attributes
+		var updateDataSourceRequest Ambar.UpdateDataSourceRequest
+		updateDataSourceRequest.ResourceId = plan.ResourceId.ValueString()
+		var port = strings.Trim(plan.DataSourceConfig.Elements()["hostPort"].String(), "\"")
+		updateDataSourceRequest.Port = &port
+		var hostname = strings.Trim(plan.DataSourceConfig.Elements()["hostname"].String(), "\"")
+		updateDataSourceRequest.Hostname = &hostname
+
+		if _, ok := plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"]; ok {
+			var tlsHost = strings.Trim(plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String(), "\"")
+			updateDataSourceRequest.TlsTerminationOverrideHost = &tlsHost
+		}
+
+		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataSource(ctx).UpdateDataSourceRequest(updateDataSourceRequest).Execute()
+		if err != nil || updateResourceResponse == nil || httpResponse == nil {
+			resp.Diagnostics.AddError(
+				"Error updating DataSource",
+				"Could not update DataSource, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
 	// partial state save in case of interrupt
-	data.State = types.StringValue(updateResourceResponse.State)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	plan.State = types.StringValue(updateResourceResponse.State)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 
 	// Wait for the update to complete
 	var describeDataSource Ambar.DescribeResourceRequest
-	describeDataSource.ResourceId = data.ResourceId.ValueString()
+	describeDataSource.ResourceId = plan.ResourceId.ValueString()
 
 	var describeResourceResponse *Ambar.DataSource
 
