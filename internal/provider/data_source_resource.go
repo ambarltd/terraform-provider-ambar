@@ -327,7 +327,6 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 	// Ambar does not support resource updates on DataSources for now.
 	var plan dataSourceResourceModel
 	var current dataSourceResourceModel
-	var err error
 
 	// Read Terraform plan into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -349,14 +348,6 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 			plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String() != current.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String()
 	}
 
-	if credentialsUpdated && nonCredentialsUpdated {
-		resp.Diagnostics.AddError("Invalid parameter change combination.",
-			"When updating Ambar resources, perform credential changes independent of any other updates on resources.")
-		return
-	}
-
-	var updateResourceResponse Ambar.ResourceStateChangeResponse
-
 	if credentialsUpdated {
 		// Make the call to update the credentials if requested
 		var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
@@ -372,7 +363,11 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 			)
 			return
 		}
-	} else {
+
+		r.waitSourceForResourceReady(plan.ResourceId.ValueString(), ctx)
+	}
+
+	if nonCredentialsUpdated {
 		// Make the call to update the DataSource attributes
 		var updateDataSourceRequest Ambar.UpdateDataSourceRequest
 		updateDataSourceRequest.ResourceId = plan.ResourceId.ValueString()
@@ -394,33 +389,12 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 			)
 			return
 		}
+
+		r.waitSourceForResourceReady(plan.ResourceId.ValueString(), ctx)
 	}
 
-	// partial state save in case of interrupt
-	plan.State = types.StringValue(updateResourceResponse.State)
+	// state save in case of interrupt
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-
-	// Wait for the update to complete
-	var describeDataSource Ambar.DescribeResourceRequest
-	describeDataSource.ResourceId = plan.ResourceId.ValueString()
-
-	var describeResourceResponse *Ambar.DataSource
-
-	for {
-		time.Sleep(10 * time.Second)
-
-		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
-		if err != nil {
-			tflog.Error(ctx, "Got error!"+err.Error())
-			return
-		}
-
-		tflog.Debug(ctx, "Got state: "+describeResourceResponse.State)
-		if describeResourceResponse.State == "READY" {
-			break
-		}
-
-	}
 }
 
 func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -482,4 +456,23 @@ func (r *dataSourceResource) Delete(ctx context.Context, req resource.DeleteRequ
 
 func (r *dataSourceResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("resource_id"), req, resp)
+}
+
+func (r *dataSourceResource) waitSourceForResourceReady(resourceId string, ctx context.Context) {
+	// Wait for the update to complete
+
+	var describeDataSource Ambar.DescribeResourceRequest
+	describeDataSource.ResourceId = resourceId
+
+	for {
+		time.Sleep(10 * time.Second)
+		describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataSource(ctx).DescribeResourceRequest(describeDataSource).Execute()
+		if err != nil {
+			return
+		}
+
+		if describeResourceResponse.State == "READY" {
+			break
+		}
+	}
 }
