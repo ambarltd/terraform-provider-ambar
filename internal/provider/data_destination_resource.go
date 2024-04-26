@@ -250,7 +250,6 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 	// should include the PlanModifier indicating replacement is required on changes. RequiresReplace()
 	var plan dataDestinationResourceModel
 	var current dataDestinationResourceModel
-	var err error
 
 	// Read Terraform plan into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
@@ -261,16 +260,12 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	// We need to validate we can perform the change in a single operation
-	if (plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString()) && plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString() {
-		resp.Diagnostics.AddError("Invalid parameter change combination.",
-			"When updating Ambar resources, perform credential changes independent of any other updates on resources.")
-		return
-	}
+	var updatedCredentials = plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString()
+	var updatedNonCredentials = plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString()
 
 	var updateResourceResponse Ambar.ResourceStateChangeResponse
 
-	if plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString() {
+	if updatedCredentials {
 		// Make the call to update the credentials if that is what is requested
 		var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
 		updateCredentialsRequest.ResourceId = plan.ResourceId.ValueString()
@@ -286,7 +281,10 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 			return
 		}
 
-	} else {
+		r.waitForDestinationResourceReady(plan.ResourceId.ValueString(), ctx)
+	}
+
+	if updatedNonCredentials {
 		// Make the call to update the endpoint.
 		var updateDestinationRequest Ambar.UpdateDataDestinationRequest
 		updateDestinationRequest.ResourceId = plan.ResourceId.ValueString()
@@ -300,31 +298,13 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 			)
 			return
 		}
+
+		r.waitForDestinationResourceReady(plan.ResourceId.ValueString(), ctx)
 	}
 
 	// partial state save in case of interrupt
 	plan.State = types.StringValue(updateResourceResponse.State)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-
-	// Wait for the update to complete
-	var describeResourceResponse *Ambar.DataDestination
-	var describeDataDestination Ambar.DescribeResourceRequest
-	describeDataDestination.ResourceId = plan.ResourceId.ValueString()
-
-	for {
-		time.Sleep(10 * time.Second)
-
-		describeResourceResponse, _, err = r.client.AmbarAPI.DescribeDataDestination(ctx).DescribeResourceRequest(describeDataDestination).Execute()
-		if err != nil {
-			return
-		}
-
-		if describeResourceResponse.State == "READY" {
-			break
-		}
-	}
-
-	plan.State = types.StringValue(describeResourceResponse.State)
 
 	// Save updated plan into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
@@ -389,4 +369,23 @@ func (r *DataDestinationResource) Delete(ctx context.Context, req resource.Delet
 
 func (r *DataDestinationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("resource_id"), req, resp)
+}
+
+func (r *DataDestinationResource) waitForDestinationResourceReady(resourceId string, ctx context.Context) {
+	// Wait for the update to complete
+
+	var describeDataDestination Ambar.DescribeResourceRequest
+	describeDataDestination.ResourceId = resourceId
+
+	for {
+		time.Sleep(10 * time.Second)
+		describeResourceResponse, _, err := r.client.AmbarAPI.DescribeDataDestination(ctx).DescribeResourceRequest(describeDataDestination).Execute()
+		if err != nil {
+			return
+		}
+
+		if describeResourceResponse.State == "READY" {
+			break
+		}
+	}
 }
