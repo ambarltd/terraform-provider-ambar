@@ -76,10 +76,7 @@ func (r *DataDestinationResource) Schema(ctx context.Context, req resource.Schem
 			"destination_endpoint": schema.StringAttribute{
 				MarkdownDescription: "The HTTP endpoint where Ambar will send your filtered record sequences to.",
 				Description:         "The HTTP endpoint where Ambar will send your filtered record sequences to.",
-				Optional:            true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+				Required:            true,
 			},
 			"username": schema.StringAttribute{
 				MarkdownDescription: "A username credential which Ambar can use to communicate with your destination.",
@@ -249,41 +246,70 @@ func (r *DataDestinationResource) Read(ctx context.Context, req resource.ReadReq
 }
 
 func (r *DataDestinationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Ambar does not support resource updates, only credential rotations. Instead, all attributes
+	// Ambar supports resource updates for credential rotations, and destinationEndpoints. Instead, all attributes
 	// should include the PlanModifier indicating replacement is required on changes. RequiresReplace()
-	var data dataDestinationResourceModel
+	var plan dataDestinationResourceModel
+	var current dataDestinationResourceModel
 	var err error
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
+	// Read Terraform plan into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &current)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Make the call to update the credentials
-	var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
-	updateCredentialsRequest.ResourceId = data.ResourceId.ValueString()
-	updateCredentialsRequest.Username = data.Username.ValueString()
-	updateCredentialsRequest.Password = data.Password.ValueString()
-
-	updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataDestinationCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
-	if err != nil || updateResourceResponse == nil || httpResponse == nil {
-		resp.Diagnostics.AddError(
-			"Error updating DataDestination",
-			"Could not update DataDestination, unexpected error: "+err.Error(),
-		)
+	// We need to validate we can perform the change in a single operation
+	if (plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString()) && plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString() {
+		resp.Diagnostics.AddError("Invalid parameter change combination.",
+			"When updating Ambar resources, perform credential changes independent of any other updates on resources.")
 		return
 	}
 
+	var updateResourceResponse Ambar.ResourceStateChangeResponse
+
+	if plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString() {
+		// Make the call to update the credentials if that is what is requested
+		var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
+		updateCredentialsRequest.ResourceId = plan.ResourceId.ValueString()
+		updateCredentialsRequest.Username = plan.Username.ValueString()
+		updateCredentialsRequest.Password = plan.Password.ValueString()
+
+		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataDestinationCredentials(ctx).UpdateResourceCredentialsRequest(updateCredentialsRequest).Execute()
+		if err != nil || updateResourceResponse == nil || httpResponse == nil {
+			resp.Diagnostics.AddError(
+				"Error updating DataDestination",
+				"Could not update DataDestination, unexpected error: "+err.Error(),
+			)
+			return
+		}
+
+	} else {
+		// Make the call to update the endpoint.
+		var updateDestinationRequest Ambar.UpdateDataDestinationRequest
+		updateDestinationRequest.ResourceId = plan.ResourceId.ValueString()
+		updateDestinationRequest.DestinationEndpoint = plan.DestinationEndpoint.ValueString()
+
+		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataDestination(ctx).UpdateDataDestinationRequest(updateDestinationRequest).Execute()
+		if err != nil || updateResourceResponse == nil || httpResponse == nil {
+			resp.Diagnostics.AddError(
+				"Error updating DataDestination",
+				"Could not update DataDestination, unexpected error: "+err.Error(),
+			)
+			return
+		}
+	}
+
 	// partial state save in case of interrupt
-	data.State = types.StringValue(updateResourceResponse.State)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	plan.State = types.StringValue(updateResourceResponse.State)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 
 	// Wait for the update to complete
 	var describeResourceResponse *Ambar.DataDestination
 	var describeDataDestination Ambar.DescribeResourceRequest
-	describeDataDestination.ResourceId = data.ResourceId.ValueString()
+	describeDataDestination.ResourceId = plan.ResourceId.ValueString()
 
 	for {
 		time.Sleep(10 * time.Second)
@@ -298,10 +324,10 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	data.State = types.StringValue(describeResourceResponse.State)
+	plan.State = types.StringValue(describeResourceResponse.State)
 
-	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	// Save updated plan into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *DataDestinationResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

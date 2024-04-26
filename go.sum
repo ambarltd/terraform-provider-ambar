@@ -16,8 +16,14 @@ github.com/ProtonMail/go-crypto v1.1.0-alpha.2 h1:bkyFVUP+ROOARdgCiJzNQo2V2kiB97
 github.com/ProtonMail/go-crypto v1.1.0-alpha.2/go.mod h1:rA3QumHc/FZ8pAHreoekgiAbzpNsfQAosU5td4SnOrE=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
-github.com/ambarltd/ambar_go_client v0.0.0-20240423203132-a7fd1908195b h1:T6b5MXXN5/um4E0CXOJp7iYzlwGaap/nDb4Ocjcscx8=
-github.com/ambarltd/ambar_go_client v0.0.0-20240423203132-a7fd1908195b/go.mod h1:OiNa6XpJZctZmxNItCV6W1e3WNvHLQL3tGsJEttF4p4=
+github.com/ambarltd/ambar_go_client v0.0.0-20240425221239-845f957d003c h1:uv9K0LJIJsdTVhGC1adC+8+FIY9hVgGUoA4kHEHVMDI=
+github.com/ambarltd/ambar_go_client v0.0.0-20240425221239-845f957d003c/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
+github.com/ambarltd/ambar_go_client v0.0.0-20240425231226-4145df0d1466 h1:UBWFAWsjzi5W10S5dQCFMQAKC4cn2Z8Wn1aFqpjsC+Q=
+github.com/ambarltd/ambar_go_client v0.0.0-20240425231226-4145df0d1466/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
+github.com/ambarltd/ambar_go_client v0.0.0-20240426004432-d77bae50e0e1 h1:gUL6LvozBnZAn/ubY3FBe1qqaHaiNjtibKTs/4/+03s=
+github.com/ambarltd/ambar_go_client v0.0.0-20240426004432-d77bae50e0e1/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
+github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756 h1:wcKpwSiVTN8YwUdvf6EjqTb09bqc0I4IJZn1NOgDS4g=
+github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
 github.com/apparentlymart/go-textseg/v12 v12.0.0/go.mod h1:S/4uRK2UtaQttw1GenVJEynmyUenKwP++x/+DdGV/Ec=
 github.com/apparentlymart/go-textseg/v15 v15.0.0 h1:uYvfpb3DyLSCGWnctWKGj857c6ew1u1fNQOlOtuGxQY=
 github.com/apparentlymart/go-textseg/v15 v15.0.0/go.mod h1:K8XmNZdhEBkdlyDdvbmmsvpAG721bKi0joRfFdHIWJ4=
@@ -185,8 +191,8 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
-github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
-github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
+github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/vmihailenco/msgpack v3.3.3+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
 github.com/vmihailenco/msgpack v4.0.4+incompatible h1:dSLoQfGFAo3F6OoNhwUmLwVgaUXK79GlxNBwueZn0xI=
 github.com/vmihailenco/msgpack v4.0.4+incompatible/go.mod h1:fy3FlTQTDXWkZ7Bh6AcGMlsjHatGryHQYUTf1ShIgkk=
