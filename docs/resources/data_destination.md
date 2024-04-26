@@ -29,13 +29,13 @@ resource "ambar_data_destination" "example_destination" {
 
 ### Required
 
+- `destination_endpoint` (String) The HTTP endpoint where Ambar will send your filtered record sequences to.
 - `password` (String, Sensitive) A password credential which Ambar can use to communicate with your destination.
 - `username` (String, Sensitive) A username credential which Ambar can use to communicate with your destination.
 
 ### Optional
 
 - `description` (String) A user friendly description of this DataDestination. Use the description filed to help augment information about this DataDestination which may may not be apparent from describing the resource, such as details about the filtered record sequences being sent.
-- `destination_endpoint` (String) The HTTP endpoint where Ambar will send your filtered record sequences to.
 - `filter_ids` (List of String) A List of Ambar resource ids belonging to Ambar Filter resources which should be used with this DataDestination. These control what DataSources and applied filters will be delivered to your destination. Note that a DataSource can only be used once per DataDestination.
 
 ### Read-Only
