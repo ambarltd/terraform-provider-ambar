@@ -24,6 +24,8 @@ github.com/ambarltd/ambar_go_client v0.0.0-20240426004432-d77bae50e0e1 h1:gUL6Lv
 github.com/ambarltd/ambar_go_client v0.0.0-20240426004432-d77bae50e0e1/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
 github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756 h1:wcKpwSiVTN8YwUdvf6EjqTb09bqc0I4IJZn1NOgDS4g=
 github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
+github.com/ambarltd/ambar_go_client v0.0.0-20240612194214-44b202099e5c h1:IkaP0FfbQZ/yA64tMW1Ua9fHBlwtO+xZiEia1Rj+5aA=
+github.com/ambarltd/ambar_go_client v0.0.0-20240612194214-44b202099e5c/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
 github.com/apparentlymart/go-textseg/v12 v12.0.0/go.mod h1:S/4uRK2UtaQttw1GenVJEynmyUenKwP++x/+DdGV/Ec=
 github.com/apparentlymart/go-textseg/v15 v15.0.0 h1:uYvfpb3DyLSCGWnctWKGj857c6ew1u1fNQOlOtuGxQY=
 github.com/apparentlymart/go-textseg/v15 v15.0.0/go.mod h1:K8XmNZdhEBkdlyDdvbmmsvpAG721bKi0joRfFdHIWJ4=

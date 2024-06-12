@@ -39,6 +39,7 @@ type dataDestinationResourceModel struct {
 	FilterIds           types.List   `tfsdk:"filter_ids"`
 	Description         types.String `tfsdk:"description"`
 	DestinationEndpoint types.String `tfsdk:"destination_endpoint"`
+	DestinationPort     types.String `tfsdk:"destination_port"`
 	Username            types.String `tfsdk:"username"`
 	Password            types.String `tfsdk:"password"`
 	State               types.String `tfsdk:"state"`
@@ -77,6 +78,12 @@ func (r *DataDestinationResource) Schema(ctx context.Context, req resource.Schem
 				MarkdownDescription: "The HTTP endpoint where Ambar will send your filtered record sequences to.",
 				Description:         "The HTTP endpoint where Ambar will send your filtered record sequences to.",
 				Required:            true,
+			},
+			"destination_port": schema.StringAttribute{
+				MarkdownDescription: "The port on which your endpoint service is listening for connections.",
+				Description:         "The port on which your endpoint service is listening for connections.",
+				Optional:            true,
+				Computed:            true,
 			},
 			"username": schema.StringAttribute{
 				MarkdownDescription: "A username credential which Ambar can use to communicate with your destination.",
@@ -145,6 +152,7 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 	createDataDestination.FilterIds = elements
 
 	createDataDestination.Description = plan.Description.ValueStringPointer()
+	createDataDestination.DestinationPort = plan.DestinationPort.ValueStringPointer()
 	createDataDestination.Username = plan.Username.ValueString()
 	createDataDestination.Password = plan.Password.ValueString()
 	createDataDestination.DestinationEndpoint = plan.DestinationEndpoint.ValueString()
@@ -223,7 +231,7 @@ func (r *DataDestinationResource) Read(ctx context.Context, req resource.ReadReq
 
 		tflog.Error(ctx, "Unexpected error, dumping logs and returning.")
 		tflog.Error(ctx, "Got http response, code: "+strconv.Itoa(httpResponse.StatusCode)+", status: "+httpResponse.Status)
-		resp.Diagnostics.AddError("Unable to read DataSource resource.", err.Error())
+		resp.Diagnostics.AddError("Unable to read DataDestination resource.", err.Error())
 		return
 	}
 
@@ -237,6 +245,7 @@ func (r *DataDestinationResource) Read(ctx context.Context, req resource.ReadReq
 
 	data.State = types.StringValue(describeResourceResponse.State)
 	data.DestinationEndpoint = types.StringValue(describeResourceResponse.DestinationEndpoint)
+	data.DestinationPort = types.StringValue(describeResourceResponse.DestinationPort)
 	data.Description = types.StringPointerValue(describeResourceResponse.Description)
 
 	data.FilterIds, _ = types.ListValueFrom(ctx, types.StringType, describeResourceResponse.FilterIds)
@@ -261,7 +270,7 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	var updatedCredentials = plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString()
-	var updatedNonCredentials = plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString()
+	var updatedNonCredentials = plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString() || plan.DestinationPort.String() != current.DestinationPort.String()
 
 	var updateResourceResponse Ambar.ResourceStateChangeResponse
 
@@ -288,7 +297,8 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 		// Make the call to update the endpoint.
 		var updateDestinationRequest Ambar.UpdateDataDestinationRequest
 		updateDestinationRequest.ResourceId = plan.ResourceId.ValueString()
-		updateDestinationRequest.DestinationEndpoint = plan.DestinationEndpoint.ValueString()
+		updateDestinationRequest.DestinationEndpoint = plan.DestinationEndpoint.ValueStringPointer()
+		updateDestinationRequest.DestinationPort = plan.DestinationPort.ValueStringPointer()
 
 		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataDestination(ctx).UpdateDataDestinationRequest(updateDestinationRequest).Execute()
 		if err != nil || updateResourceResponse == nil || httpResponse == nil {
