@@ -199,6 +199,7 @@ func (r *DataDestinationResource) Create(ctx context.Context, req resource.Creat
 	// Map response body to schema and populate Computed attribute values
 	plan.ResourceId = types.StringValue(createResourceResponse.ResourceId)
 	plan.State = types.StringValue(describeResourceResponse.State)
+	plan.DestinationPort = types.StringValue(describeResourceResponse.DestinationEndpoint)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
