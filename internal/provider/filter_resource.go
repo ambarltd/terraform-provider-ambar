@@ -200,7 +200,7 @@ func (r *FilterResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 		tflog.Error(ctx, "Unexpected error, dumping logs and returning.")
 		tflog.Error(ctx, "Got http response, code: "+strconv.Itoa(httpResponse.StatusCode)+", status: "+httpResponse.Status)
-		resp.Diagnostics.AddError("Unable to read DataSource resource.", err.Error())
+		resp.Diagnostics.AddError("Unable to read Filter resource.", err.Error())
 		return
 	}
 
