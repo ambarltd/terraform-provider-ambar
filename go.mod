@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.21.3
 
 require (
-	github.com/ambarltd/ambar_go_client v0.0.0-20240612194214-44b202099e5c
+	github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756
 	github.com/hashicorp/terraform-plugin-docs v0.19.1
 	github.com/hashicorp/terraform-plugin-framework v1.8.0
 	github.com/hashicorp/terraform-plugin-go v0.22.2

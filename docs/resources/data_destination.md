@@ -19,7 +19,6 @@ resource "ambar_data_destination" "example_destination" {
   ]
   description          = "My Terraform DataDestination"
   destination_endpoint = "https://1.2.3.4.com/data"
-  destination_port     = "8443"
   username             = "username"
   password             = "password"
 }
@@ -37,7 +36,6 @@ resource "ambar_data_destination" "example_destination" {
 ### Optional
 
 - `description` (String) A user friendly description of this DataDestination. Use the description filed to help augment information about this DataDestination which may may not be apparent from describing the resource, such as details about the filtered record sequences being sent.
-- `destination_port` (String) The port on which your endpoint service is listening for connections.
 - `filter_ids` (List of String) A List of Ambar resource ids belonging to Ambar Filter resources which should be used with this DataDestination. These control what DataSources and applied filters will be delivered to your destination. Note that a DataSource can only be used once per DataDestination.
 
 ### Read-Only
