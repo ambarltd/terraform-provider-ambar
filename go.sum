@@ -16,10 +16,6 @@ github.com/ProtonMail/go-crypto v1.1.0-alpha.2 h1:bkyFVUP+ROOARdgCiJzNQo2V2kiB97
 github.com/ProtonMail/go-crypto v1.1.0-alpha.2/go.mod h1:rA3QumHc/FZ8pAHreoekgiAbzpNsfQAosU5td4SnOrE=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
-github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756 h1:wcKpwSiVTN8YwUdvf6EjqTb09bqc0I4IJZn1NOgDS4g=
-github.com/ambarltd/ambar_go_client v0.0.0-20240426011029-07769d17e756/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
-github.com/ambarltd/ambar_go_client v0.0.0-20240617135048-98d560536b15 h1:nxTEFo2LqsCVoHYYetgqZxaDY/c1NHuCjsIW+Y+D9QY=
-github.com/ambarltd/ambar_go_client v0.0.0-20240617135048-98d560536b15/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
 github.com/ambarltd/ambar_go_client v0.0.0-20240617143255-afce800ad884 h1:Bx5hcSv7n51pTp1MwjYUjvDuqaG99Qb2P3/KydNBcHc=
 github.com/ambarltd/ambar_go_client v0.0.0-20240617143255-afce800ad884/go.mod h1:nQxYJrrTczECNnwozf9Nn0RUgWX1KPBXoT2/Jhy/q98=
 github.com/apparentlymart/go-textseg/v12 v12.0.0/go.mod h1:S/4uRK2UtaQttw1GenVJEynmyUenKwP++x/+DdGV/Ec=
