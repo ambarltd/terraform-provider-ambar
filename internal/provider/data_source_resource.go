@@ -348,6 +348,8 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 			plan.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String() != current.DataSourceConfig.Elements()["tlsTerminationOverrideHost"].String()
 	}
 
+	var updateResourceResponse Ambar.ResourceStateChangeResponse
+
 	if credentialsUpdated {
 		// Make the call to update the credentials if requested
 		var updateCredentialsRequest Ambar.UpdateResourceCredentialsRequest
@@ -392,6 +394,9 @@ func (r *dataSourceResource) Update(ctx context.Context, req resource.UpdateRequ
 
 		r.waitSourceForResourceReady(plan.ResourceId.ValueString(), ctx)
 	}
+
+	// partial state save in case of interrupt
+	plan.State = types.StringValue(updateResourceResponse.State)
 
 	// state save in case of interrupt
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)

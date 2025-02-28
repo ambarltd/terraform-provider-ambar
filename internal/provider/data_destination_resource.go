@@ -304,9 +304,7 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 
 	// partial state save in case of interrupt
 	plan.State = types.StringValue(updateResourceResponse.State)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 
-	// Save updated plan into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
