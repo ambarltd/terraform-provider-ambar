@@ -310,7 +310,11 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 		// Make the call to update the endpoint.
 		var updateDestinationRequest Ambar.UpdateDataDestinationRequest
 		updateDestinationRequest.ResourceId = plan.ResourceId.ValueString()
-		updateDestinationRequest.DestinationEndpoint = plan.DestinationEndpoint.ValueString()
+		updateDestinationRequest.DestinationEndpoint = plan.DestinationEndpoint.ValueStringPointer()
+
+		filters := make([]string, 0, len(plan.FilterIds.Elements()))
+		_ = plan.FilterIds.ElementsAs(ctx, &filters, false)
+		updateDestinationRequest.FilterIds = filters
 
 		updateResourceResponse, httpResponse, err := r.client.AmbarAPI.UpdateDataDestination(ctx).UpdateDataDestinationRequest(updateDestinationRequest).Execute()
 		if err != nil || updateResourceResponse == nil || httpResponse == nil {
