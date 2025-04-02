@@ -17,10 +17,10 @@ resource "ambar_data_source" "test_data_source" {
 		"tableName": "events",
 		"publicationName": "acceptance_test_pub",
 		"columns": "partitioning_column,serial_column,columns",
-		"partitioning_column = "partitioning_column"
-		"serial_column = "serial_column"
-		"username = "username"
-		"password = "password"
+		"partitioning_column": "partitioning_column",
+		"serial_column": "serial_column",
+		"username": "username",
+		"password": "password"
 	}
 }`
 )
