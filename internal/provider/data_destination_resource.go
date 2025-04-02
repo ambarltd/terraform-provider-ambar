@@ -62,7 +62,29 @@ func (r *DataDestinationResource) Schema(ctx context.Context, req resource.Schem
 				Description:         "A List of Ambar resource ids belonging to Ambar Filter resources which should be used with this DataDestination. These control what DataSources and applied filters will be delivered to your destination. Note that a DataSource can only be used once per DataDestination.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplace(),
+					listplanmodifier.RequiresReplaceIf(
+						func(ctx context.Context, req planmodifier.ListRequest, resp *listplanmodifier.RequiresReplaceIfFuncResponse) {
+							var current dataDestinationResourceModel
+							// Read Terraform prior state data into the model
+							resp.Diagnostics.Append(req.State.Get(ctx, &current)...)
+
+							if resp.Diagnostics.HasError() {
+								return
+							}
+
+							var plan dataDestinationResourceModel
+							// Read Terraform plan data into the model
+							resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+
+							if resp.Diagnostics.HasError() {
+								return
+							}
+
+							// Check if list size has changed, which requires replacement
+							resp.RequiresReplace = len(current.FilterIds.Elements()) != len(plan.FilterIds.Elements())
+						},
+						"DataDestination filters can only be replaced with a filter for the same DataSource, and does not reset message transport. Adding Filters which refer to a new DataSource, or removing Filters will require replacement of the DataDestination.",
+						"DataDestination filters can only be **replaced** with a filter for the same DataSource, and does not reset message transport. Adding Filters which refer to a new DataSource, or removing Filters will require replacement of the DataDestination."),
 				},
 			},
 			"description": schema.StringAttribute{
