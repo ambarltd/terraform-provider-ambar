@@ -283,7 +283,33 @@ func (r *DataDestinationResource) Update(ctx context.Context, req resource.Updat
 	}
 
 	var updatedCredentials = plan.Username.ValueString() != current.Username.ValueString() || plan.Password.ValueString() != current.Password.ValueString()
-	var updatedNonCredentials = plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString()
+
+	// Check if the FilterIds have changed by comparing the current and plan values
+	var filterIdsChanged = false
+
+	// Get elements from both current and plan FilterIds
+	currentFilterIds := make([]string, 0, len(current.FilterIds.Elements()))
+	_ = current.FilterIds.ElementsAs(ctx, &currentFilterIds, false)
+	planFilterIds := make([]string, 0, len(plan.FilterIds.Elements()))
+	_ = plan.FilterIds.ElementsAs(ctx, &planFilterIds, false)
+
+	// we need to check if the exact same elements exist in both lists
+	// Create maps for both current and plan filter IDs for efficient lookup
+	currentFilterIdMap := make(map[string]bool)
+	for _, id := range currentFilterIds {
+		currentFilterIdMap[id] = true
+	}
+
+	// Check if all plan filter IDs exist in the current map
+	for _, id := range planFilterIds {
+		if !currentFilterIdMap[id] {
+			filterIdsChanged = true
+			break
+		}
+	}
+
+	// Check if either the endpoint or FilterIds have changed
+	var updatedNonCredentials = plan.DestinationEndpoint.ValueString() != current.DestinationEndpoint.ValueString() || filterIdsChanged
 
 	var updateResourceResponse Ambar.ResourceStateChangeResponse
 
